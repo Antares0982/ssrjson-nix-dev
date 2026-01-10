@@ -110,7 +110,6 @@
         in
         rec {
           default = mkMyShell curVer;
-          internal = default.super;
         }
         // (builtins.listToAttrs (map verToBuildEnvDef versionUtils.versions))
         // (builtins.listToAttrs (map verToDevEnvDef versionUtils.versions))
