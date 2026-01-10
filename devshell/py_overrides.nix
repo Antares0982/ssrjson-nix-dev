@@ -44,26 +44,4 @@ in
       inherit pkgs-legacy;
     };
   }
-  // (lib.optionalAttrs (verInt >= 15) (noCheckPackages [
-    "pytest-xdist"
-  ]))
-  # // (lib.optionalAttrs (verInt >= 14) {
-  #   pytest-random-order =
-  #     (super.pytest-random-order.override {
-  #       pytest-xdist = null;
-  #     }).overrideAttrs
-  #       {
-  #         pytestCheckPhase = ":";
-  #       };
-  # })
-  # // (lib.optionalAttrs (verInt >= 14 && system == "aarch64-linux") (noCheckPackages [
-  #   "numpy"
-  #   "virtualenv"
-  # ]))
-  # // (lib.optionalAttrs (verInt >= 14 && system == "aarch64-darwin") (noCheckPackages [
-  #   "mypy"
-  # ]))
-  # // (lib.optionalAttrs (system == "aarch64-darwin") (noCheckPackages [
-  #   "pytest-timeout"
-  # ]))
 )

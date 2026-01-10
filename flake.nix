@@ -38,32 +38,47 @@
         let
           pkgs-legacy = import nixpkgs-legacy { inherit (pkgs.stdenv.hostPlatform) system; };
           versionUtils = pkgs.callPackage ./devshell/version_utils.nix { inherit pkgs-legacy; };
-          defaultShell = pkgs.callPackage ./devshell/shell.nix {
-            inherit pkgs-legacy;
-          };
+          # defaultShell = pkgs.callPackage ./devshell/shell.nix {
+          #   inherit pkgs-legacy;
+          # };
           _drvs = pkgs.callPackage ./devshell/_drvs.nix { inherit pkgs-legacy; };
           pythonVerConfig = versionUtils.pythonVerConfig;
           curVer = pythonVerConfig.curVer;
           leastVer = pythonVerConfig.minSupportVer;
-          verLength = curVer - leastVer;
+          getPyEnv = ver: builtins.elemAt _drvs.pyenvs (ver - leastVer);
+          getUsingPython = ver: builtins.elemAt _drvs.using_pythons (ver - leastVer);
+          getShellAndHook =
+            ver:
+            let
+              pyenv = getPyEnv ver;
+              using_python = getUsingPython ver;
+              shell = pkgs.callPackage ./devshell/shell.nix {
+                inherit pkgs-legacy;
+                inherit pyenv using_python;
+              };
+              shellHook = pkgs.callPackage ./devshell/shellhook.nix {
+                parentShell = shell;
+                inherit pkgs-legacy;
+                inherit (shell) inputDerivation;
+                inherit (_drvs) pyenvs debuggable_py pyenv_nodebug;
+                nix_pyenv_directory = ".nix-devenv";
+                inherit pyenv using_python;
+              };
+              finalShell = shell.overrideAttrs {
+                inherit shellHook;
+              };
+            in
+            {
+              inherit shell shellHook finalShell;
+            };
           mkMyShell =
-            { shell, ... }:
-            (
-              (shell.overrideAttrs {
-                shellHook = pkgs.callPackage ./devshell/shellhook.nix {
-                  parentShell = shell;
-                  inherit pkgs-legacy;
-                  inherit (shell) inputDerivation;
-                  inherit (_drvs) pyenvs debuggable_py pyenv_nodebug;
-                  nix_pyenv_directory = ".nix-devenv";
-                  pyenv = builtins.elemAt _drvs.pyenvs verLength;
-                  using_python = builtins.elemAt _drvs.using_pythons verLength;
-                };
-              })
-              // {
-                super = shell;
-              }
-            );
+            selectedVer:
+            let
+              shellAndHook = getShellAndHook selectedVer;
+              shell = shellAndHook.shell;
+              shellHook = shellAndHook.shellHook;
+            in
+            shellAndHook.finalShell;
           verToBuildEnvDef = ver: {
             name = "buildenv-py3" + (toString ver);
             value = pkgs.mkShell {
@@ -89,12 +104,17 @@
               hardeningDisable = [ "fortify" ];
             };
           };
+          verToDevEnvDef = ver: {
+            name = "devenv-py3" + (toString ver);
+            value = mkMyShell ver;
+          };
         in
-        {
-          internal = defaultShell;
-          default = mkMyShell { shell = defaultShell; };
+        rec {
+          default = mkMyShell curVer;
+          internal = default.super;
         }
         // (builtins.listToAttrs (map verToBuildEnvDef versionUtils.versions))
+        // (builtins.listToAttrs (map verToDevEnvDef versionUtils.versions))
       );
     };
 }

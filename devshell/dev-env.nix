@@ -14,6 +14,7 @@
   clang-tools,
   pyenv_nodebug,
   cmake-format,
+  includeAllPythons ? false,
   ...
 }:
 let
@@ -24,13 +25,13 @@ let
   versionUtils = callPackage ./version_utils.nix { inherit pkgs-legacy; };
   versions = versionUtils.versions;
   minSupportVer = versionUtils.pythonVerConfig.minSupportVer;
-  curVer = versionUtils.pythonVerConfig.curVer;
+  curVer = pkgs.lib.strings.toInt pyenv.sourceVersion.minor;
   link_python_cmd =
     ver:
     let
       python_env = builtins.elemAt pyenvs (ver - minSupportVer);
       debuggable_python = builtins.elemAt debuggable_py (ver - minSupportVer);
-      dev_python = callPackage ./dev_python.nix {
+      dev_python = callPackage ./_dev_python.nix {
         pyenv_with_site_packages = python_env;
         inherit debuggable_python ver;
       };
@@ -73,6 +74,11 @@ let
       #     rm -rf ${debugSourceDir}/Python-${debuggable_python.version}/Lib
       #   fi
     '';
+  add_python_cmd =
+    if includeAllPythons then
+      (pkgs.lib.strings.concatStrings (builtins.map link_python_cmd versions))
+    else
+      (link_python_cmd curVer);
   pythonpathEnvLiteral = "\${" + "PYTHONPATH+x}";
   runSdeClxPath = "$out/bin/run-sde-clx";
   runSdeRplPath = "$out/bin/run-sde-rpl";
@@ -102,7 +108,7 @@ stdenvNoCC.mkDerivation {
     mkdir -p $out/nix-support
   ''
   # creating python library symlinks
-  + (pkgs.lib.strings.concatStrings (builtins.map link_python_cmd versions))
+  + add_python_cmd
   + ''
     # bin
     ln -s "${pyenv_nodebug}/bin/python" "$out/bin/python_nodebug"
@@ -111,7 +117,7 @@ stdenvNoCC.mkDerivation {
     ln -s "${cmake}/bin/cmake" "$out/bin/cmake"
     ln -s "${clang-tools}/bin/clang-format" "$out/bin/clang-format"
     ln -s "${cmake-format}/bin/cmake-format" "$out/bin/cmake-format"
-    ln -s "$out/bin/python3.${toString curVer}" "$out/bin/python"
+    ln -s "$(readlink -f "$out/bin/python3.${toString curVer}")" "$out/bin/python"
     # lib
     ln -s "$(readlink -f $(${pkgs.gcc}/bin/gcc -print-file-name=libasan.so))" "$out/lib/libasan.so"
     # nix-support

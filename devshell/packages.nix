@@ -1,6 +1,7 @@
 {
-  pkgs ? import <nixpkgs> { },
+  pkgs,
   pkgs-legacy,
+  pyenv,
   ...
 }:
 let
@@ -11,10 +12,10 @@ let
   curVer = pythonVerConfig.curVer;
   leastVer = pythonVerConfig.minSupportVer;
   drvs = (pkgs.callPackage ./_drvs.nix { inherit pkgs-legacy; });
-  pyenv = builtins.elemAt drvs.pyenvs (curVer - leastVer);
+  # pyenv = builtins.elemAt drvs.pyenvs (curVer - leastVer);
 in
 [ pyenv ]
-++ drvs.pyenvs
+# ++ drvs.pyenvs
 ++ (with drvs; [
   cmake
   gdb
