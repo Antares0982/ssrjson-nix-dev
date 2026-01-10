@@ -33,14 +33,13 @@
 
     in
     {
+      ssrjson-nixpkgs = nixpkgs;
+      ssrjson-nixpkgs-legacy = nixpkgs-legacy;
       devShells = forAllSystems (
         pkgs:
         let
           pkgs-legacy = import nixpkgs-legacy { inherit (pkgs.stdenv.hostPlatform) system; };
           versionUtils = pkgs.callPackage ./devshell/version_utils.nix { inherit pkgs-legacy; };
-          # defaultShell = pkgs.callPackage ./devshell/shell.nix {
-          #   inherit pkgs-legacy;
-          # };
           _drvs = pkgs.callPackage ./devshell/_drvs.nix { inherit pkgs-legacy; };
           pythonVerConfig = versionUtils.pythonVerConfig;
           curVer = pythonVerConfig.curVer;
