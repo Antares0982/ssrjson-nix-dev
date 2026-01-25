@@ -112,6 +112,7 @@ stdenvNoCC.mkDerivation {
     ln -s "${clang-tools}/bin/clang-format" "$out/bin/clang-format"
     ln -s "${cmake-format}/bin/cmake-format" "$out/bin/cmake-format"
     ln -s "$(readlink -f "$out/bin/python3.${verNameSuffix}")" "$out/bin/python"
+    ln -s "$(readlink -f "$out/bin/python3.${verNameSuffix}")" "$out/bin/python3"
     # lib
     ln -s "$(readlink -f $(${pkgs.gcc}/bin/gcc -print-file-name=libasan.so))" "$out/lib/libasan.so"
     # nix-support
