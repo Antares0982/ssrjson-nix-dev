@@ -12,7 +12,6 @@ let
   curVer = pythonVerConfig.curVer;
   leastVer = pythonVerConfig.minSupportVer;
   drvs = (pkgs.callPackage ./_drvs.nix { inherit pkgs-legacy; });
-  # pyenv = builtins.elemAt drvs.pyenvs (curVer - leastVer);
 in
 [ pyenv ]
 # ++ drvs.pyenvs

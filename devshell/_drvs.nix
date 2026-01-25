@@ -12,6 +12,7 @@ let
   pyVerToPkgs = versionUtils.pyVerToPkgs;
   maxSupportVer = pythonVerConfig.maxSupportVer;
   minSupportVer = pythonVerConfig.minSupportVer;
+  minSupportNoGILVer = pythonVerConfig.minSupportNoGILVer;
   curVer = pythonVerConfig.curVer;
   supportedVers = builtins.genList (x: minSupportVer + x) (maxSupportVer - minSupportVer + 1);
   using_pythons_map =
@@ -50,14 +51,39 @@ let
       }) supportedVers
     )
   );
+  using_pythons_no_gil = (
+    builtins.map using_pythons_map (
+      builtins.map (supportedVer: rec {
+        curPkgs = pkgs;
+        py = (
+          builtins.getAttr (
+            "python3"
+            + (builtins.toString supportedVer)
+            + lib.optionalString (supportedVer >= minSupportNoGILVer) "FreeThreading"
+          ) pkgs
+        );
+      }) supportedVers
+    )
+  );
   # import required python packages
-  required_python_packages = pkgs.callPackage ./py_requirements.nix { inherit pkgs-legacy; };
+  required_python_packages = pkgs.callPackage ./py_requirements.nix {
+    inherit pkgs-legacy;
+    useNoGIL = false;
+  };
+  required_python_packages_no_gil = pkgs.callPackage ./py_requirements.nix {
+    inherit pkgs-legacy;
+    useNoGIL = true;
+  };
   pyenvs_map = py: (py.withPackages required_python_packages);
+  pyenvs_map_no_gil = py: (py.withPackages required_python_packages_no_gil);
   pyenvs = builtins.map pyenvs_map using_pythons;
+  pyenvs_no_gil = builtins.map pyenvs_map_no_gil using_pythons_no_gil;
   debuggable_py = builtins.map (
     py: (pyVerToPkgs (lib.strings.toInt py.sourceVersion.minor)).enableDebugging py
   ) using_pythons;
-  pyenv_nodebug = builtins.elemAt pyenvs (curVer - minSupportVer);
+  debuggable_py_no_gil = builtins.map (
+    py: pkgs.enableDebugging (py.override { stdenv = pkgs.clangStdenv; })
+  ) using_pythons_no_gil;
   sde = pkgs.callPackage ./sde.nix { };
   llvmDbg = pkgs.enableDebugging pkgs.llvmPackages.libllvm;
   verToEnvDef = ver: {
@@ -67,8 +93,9 @@ let
 in
 {
   inherit pyenvs; # list
-  inherit pyenv_nodebug;
+  inherit pyenvs_no_gil; # list
   inherit debuggable_py; # list
+  inherit debuggable_py_no_gil; # list
   inherit using_pythons; # list
   inherit llvmDbg;
   inherit (pkgs)

@@ -5,6 +5,7 @@
   stdenvNoCC,
   pyenv,
   pyenvs,
+  pyenvs_no_gil,
   using_python,
   debuggable_py,
   sitePackagesString,
@@ -12,8 +13,8 @@
   cmake,
   llvmPackages,
   clang-tools,
-  pyenv_nodebug,
   cmake-format,
+  useNoGIL,
   includeAllPythons ? false,
   ...
 }:
@@ -26,53 +27,45 @@ let
   versions = versionUtils.versions;
   minSupportVer = versionUtils.pythonVerConfig.minSupportVer;
   curVer = pkgs.lib.strings.toInt pyenv.sourceVersion.minor;
+  usePyEnvs = if useNoGIL then pyenvs_no_gil else pyenvs;
+  pyenv_nodebug = builtins.elemAt usePyEnvs (curVer - minSupportVer);
   link_python_cmd =
     ver:
     let
-      python_env = builtins.elemAt pyenvs (ver - minSupportVer);
+      python_env = builtins.elemAt usePyEnvs (ver - minSupportVer);
       debuggable_python = builtins.elemAt debuggable_py (ver - minSupportVer);
       dev_python = callPackage ./_dev_python.nix {
         pyenv_with_site_packages = python_env;
-        inherit debuggable_python ver;
+        inherit debuggable_python ver useNoGIL;
       };
     in
     ''
-        ln -s "${dev_python}/bin/python3.${builtins.toString ver}" "$out/bin/${python_env.executable}"
-        # creating python library symlinks
-        NIX_LIB_DIR="$out/lib/${python_env.libPrefix}"
-        mkdir -p "$NIX_LIB_DIR"
-        # adding site packages
-        for file in ${python_env}/${python_env.sitePackages}/*; do
-            basefile=$(basename "$file")
-            if [ -d "$file" ]; then
-                if [[ "$basefile" != *dist-info && "$basefile" != __pycache__ ]]; then
-                    ln -s "$file" "$NIX_LIB_DIR/$basefile"
-                fi
-            else
-                # the typing_extensions.py will make the vscode type checker not working!
-                if [[ $basefile == *.so ]] || ([[ $basefile == *.py ]] && [[ $basefile != typing_extensions.py ]]); then
-                    ln -s "$file" "$NIX_LIB_DIR/$basefile"
-                fi
-            fi
-        done
-        for file in $NIX_LIB_DIR/*; do
-            if [[ -L "$file" ]] && [[ "$(dirname $(readlink "$file"))" != "${python_env}/${python_env.sitePackages}" ]]; then
-                rm -f "$file"
-            fi
-        done
-        # ensure the typing_extensions.py is not in the lib directory
-        rm -f "$NIX_LIB_DIR/typing_extensions.py"
-        unset NIX_LIB_DIR
-
-      # TODO
-      #   mkdir -p "${debugSourceDir}"
-      #   if [[ ! -d ${debugSourceDir}/Python-${debuggable_python.version} ]]; then
-      #     cp -r ${debuggable_python.src} ${debugSourceDir}/Python-${debuggable_python.version}
-      #     chmod -R 755 ${debugSourceDir}/Python-${debuggable_python.version}
-      #     rm -rf ${debugSourceDir}/Python-${debuggable_python.version}/Doc
-      #     rm -rf ${debugSourceDir}/Python-${debuggable_python.version}/Grammar
-      #     rm -rf ${debugSourceDir}/Python-${debuggable_python.version}/Lib
-      #   fi
+      ln -s "${dev_python}/bin/python3.${builtins.toString ver}" "$out/bin/${python_env.executable}"
+      # creating python library symlinks
+      NIX_LIB_DIR="$out/lib/${python_env.libPrefix}"
+      mkdir -p "$NIX_LIB_DIR"
+      # adding site packages
+      for file in ${python_env}/${python_env.sitePackages}/*; do
+          basefile=$(basename "$file")
+          if [ -d "$file" ]; then
+              if [[ "$basefile" != *dist-info && "$basefile" != __pycache__ ]]; then
+                  ln -s "$file" "$NIX_LIB_DIR/$basefile"
+              fi
+          else
+              # the typing_extensions.py will make the vscode type checker not working!
+              if [[ $basefile == *.so ]] || ([[ $basefile == *.py ]] && [[ $basefile != typing_extensions.py ]]); then
+                  ln -s "$file" "$NIX_LIB_DIR/$basefile"
+              fi
+          fi
+      done
+      for file in $NIX_LIB_DIR/*; do
+          if [[ -L "$file" ]] && [[ "$(dirname $(readlink "$file"))" != "${python_env}/${python_env.sitePackages}" ]]; then
+              rm -f "$file"
+          fi
+      done
+      # ensure the typing_extensions.py is not in the lib directory
+      rm -f "$NIX_LIB_DIR/typing_extensions.py"
+      unset NIX_LIB_DIR
     '';
   add_python_cmd =
     if includeAllPythons then
@@ -95,6 +88,7 @@ let
   sdeClxScript = builtins.replaceStrings [ "@cpuid@" "@sde64@" ] [ "-clx" sde64Path ] sdeScript;
   sdeRplScript = builtins.replaceStrings [ "@cpuid@" "@sde64@" ] [ "-rpl" sde64Path ] sdeScript;
   sdeIvbScript = builtins.replaceStrings [ "@cpuid@" "@sde64@" ] [ "-ivb" sde64Path ] sdeScript;
+  verNameSuffix = (toString curVer) + (if useNoGIL then "t" else "");
 in
 stdenvNoCC.mkDerivation {
   name = "ssrjson-dev-env";
@@ -117,7 +111,7 @@ stdenvNoCC.mkDerivation {
     ln -s "${cmake}/bin/cmake" "$out/bin/cmake"
     ln -s "${clang-tools}/bin/clang-format" "$out/bin/clang-format"
     ln -s "${cmake-format}/bin/cmake-format" "$out/bin/cmake-format"
-    ln -s "$(readlink -f "$out/bin/python3.${toString curVer}")" "$out/bin/python"
+    ln -s "$(readlink -f "$out/bin/python3.${verNameSuffix}")" "$out/bin/python"
     # lib
     ln -s "$(readlink -f $(${pkgs.gcc}/bin/gcc -print-file-name=libasan.so))" "$out/lib/libasan.so"
     # nix-support

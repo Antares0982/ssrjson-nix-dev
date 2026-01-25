@@ -1,0 +1,15 @@
+#/usr/bin/env bash
+set -e
+nix develop --command echo .
+json_content=$(cat ./devshell/pyver.json)
+min_ver=$(echo "$json_content" | jq '.minSupportVer')
+min_nogil_ver=$(echo "$json_content" | jq '.minSupportNoGILVer')
+max_ver=$(echo "$json_content" | jq '.maxSupportVer')
+for ((i = min_ver; i <= max_ver; i++)); do
+	nix develop .#devenv-py3$i --command echo devenv-py3$i
+	nix develop .#buildenv-py3$i --command echo buildenv-py3$i
+done
+for ((i = min_nogil_ver; i <= max_ver; i++)); do
+	nix develop .#devenv-py3$i-FreeThreading --command echo devenv-py3$i-FreeThreading
+	nix develop .#buildenv-py3$i-FreeThreading --command echo buildenv-py3$i-FreeThreading
+done

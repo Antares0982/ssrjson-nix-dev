@@ -1,4 +1,8 @@
-{ pkgs-legacy, ... }:
+{
+  pkgs-legacy,
+  useNoGIL,
+  ...
+}:
 pypkgs:
 let
   pkgs = pypkgs.pkgs;
@@ -18,7 +22,7 @@ with pypkgs;
 ++ (lib.optionals (system == "x86_64-linux") [ pypkgs.psutil ])
 ++ (
   with pypkgs; # needed by developers
-  lib.optionals (minorVer == pythonVerConfig.curVer) [
+  lib.optionals (minorVer == pythonVerConfig.curVer && !useNoGIL) [
     ssrjson-benchmark
     orjson
     objgraph

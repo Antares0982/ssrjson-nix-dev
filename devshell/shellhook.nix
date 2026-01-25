@@ -3,13 +3,14 @@
   nix_pyenv_directory,
   pyenv,
   pyenvs,
+  pyenvs_no_gil,
   debuggable_py,
-  pyenv_nodebug,
   using_python,
   pkgs,
   pkgs-legacy,
   inputDerivation,
   lib,
+  useNoGIL,
 }:
 let
   versionUtils = pkgs.callPackage ./version_utils.nix { inherit pkgs-legacy; };
@@ -42,10 +43,11 @@ let
       pkgs-legacy
       pyenv
       pyenvs
+      pyenvs_no_gil
       debuggable_py
       inputDerivation
-      pyenv_nodebug
       using_python
+      useNoGIL
       ;
     sitePackagesString = pyenv.sitePackages;
   };
