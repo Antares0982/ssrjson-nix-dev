@@ -5,7 +5,7 @@
   pkgs,
   lib,
   fetchurl,
-  version ? "3.11.3",
+  version ? "3.11.6",
   ...
 }:
 let
@@ -27,6 +27,11 @@ let
           manyLinux = "manylinux_2_34_x86_64";
           hash = "sha256-1hzVQ9aXFdX8CmkMfG+NzDB7wjq++XOJV5gYhfXzgik=";
         };
+        "3.11.6" = {
+          urlpart = "32/a7/573fec3df4dc8fc259b7770dc6c0656f91adce6e19330c78d23f87945d1e";
+          manyLinux = "manylinux_2_17_x86_64.manylinux2014_x86_64";
+          hash = "sha256-bd35unBilJBsVu9RUKlYMXsJqjqKSN8cUszyLsGQfqw=";
+        };
       };
     };
     "aarch64-linux" = {
@@ -43,14 +48,10 @@ let
           manyLinux = "manylinux_2_34_aarch64";
           hash = "sha256-iNz8UUz9Gw3gOEQ8ez5ql5f/sbNnTvH9FPcBoTOX+C0=";
         };
-      };
-    };
-    "aarch64-darwin" = {
-      "3.14" = {
-        "3.11.3" = {
-          urlpart = "e4/6d/468d21d49bb12f900052edcfbf52c292022d0a323d7828dc6376e6319703";
-          manyLinux = "macosx_15_0_arm64";
-          hash = "sha256-vIvIW4G2rJ/E2uOTqMFZuBf0wsne5dErdzvds7lfwH4=";
+        "3.11.6" = {
+          urlpart = "39/5e/cbb9d830ed4e47f4375ad8eef8e4fff1bf1328437732c3809054fc4e80be";
+          manyLinux = "manylinux_2_17_aarch64.manylinux2014_aarch64";
+          hash = "sha256-s3b7BfIKluwRfUeYfdOzkmXGNXJb2kBmG0xbc7d7X94=";
         };
       };
     };
