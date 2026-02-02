@@ -35,16 +35,16 @@ jobs:
           echo "DO_UPDATE=${{ github.event.inputs.do-update }}" >> $GITHUB_ENV
           echo "DO_PUSH_NEW_BRANCH=${{ github.event.inputs.new-branch }}" >> $GITHUB_ENV
         fi
-    - name: Maximize build space
-      if: env.DO_UPDATE == 'true' || env.DO_PUSH_NEW_BRANCH == 'true'
-      uses: easimon/maximize-build-space@master
-      with:
-        build-mount-path: '/nix'
-        remove-dotnet: 'true'
-        remove-android: 'true'
-        remove-haskell: 'true'
-        remove-codeql: 'true'
-        remove-docker-images: 'true'
+    # - name: Maximize build space
+    #   if: env.DO_UPDATE == 'true' || env.DO_PUSH_NEW_BRANCH == 'true'
+    #   uses: easimon/maximize-build-space@master
+    #   with:
+    #     build-mount-path: '/nix'
+    #     remove-dotnet: 'true'
+    #     remove-android: 'true'
+    #     remove-haskell: 'true'
+    #     remove-codeql: 'true'
+    #     remove-docker-images: 'true'
     - name: Checkout
       uses: actions/checkout@v4
       with:
