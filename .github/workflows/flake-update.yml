@@ -70,7 +70,7 @@ jobs:
     - name: Import GPG key
       if: env.DO_UPDATE == 'true' || env.DO_PUSH_NEW_BRANCH == 'true'
       id: import-gpg
-      uses: crazy-max/ghaction-import-gpg@master
+      uses: crazy-max/ghaction-import-gpg@v6
       with:
         gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
         passphrase: ${{ secrets.PASSPHRASE }}
