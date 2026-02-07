@@ -115,7 +115,7 @@
             };
           };
           verToNoGILBuildEnvDef = ver: {
-            name = "buildenv-py3" + (toString ver) + "-FreeThreading";
+            name = "buildenv-py3" + (toString ver) + "t";
             value = pkgs.mkShell {
               buildInputs = [
                 ((builtins.getAttr ("python3" + (toString ver) + "FreeThreading") pkgs).withPackages (
@@ -140,7 +140,7 @@
             value = mkMyShell ver;
           };
           verToNoGILDevEnvDef = ver: {
-            name = "devenv-py3" + (toString ver) + "-FreeThreading";
+            name = "devenv-py3" + (toString ver) + "t";
             value = mkMyShellNoGIL ver;
           };
         in
