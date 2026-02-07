@@ -88,7 +88,7 @@ let
   sdeClxScript = builtins.replaceStrings [ "@cpuid@" "@sde64@" ] [ "-clx" sde64Path ] sdeScript;
   sdeRplScript = builtins.replaceStrings [ "@cpuid@" "@sde64@" ] [ "-rpl" sde64Path ] sdeScript;
   sdeIvbScript = builtins.replaceStrings [ "@cpuid@" "@sde64@" ] [ "-ivb" sde64Path ] sdeScript;
-  verNameSuffix = (toString curVer) + (if useNoGIL then "t" else "");
+  verNameSuffix = (toString curVer) + (pkgs.lib.optionalString useNoGIL "t");
 in
 stdenvNoCC.mkDerivation {
   name = "ssrjson-dev-env";

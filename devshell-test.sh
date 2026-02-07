@@ -9,6 +9,6 @@ for ((i = max_ver; i >= min_ver; i--)); do
 	nix develop .#buildenv-py3$i --command echo buildenv-py3$i
 done
 for ((i = max_ver; i >= min_nogil_ver; i--)); do
-	nix develop .#devenv-py3$i-FreeThreading --command echo devenv-py3$i-FreeThreading
-	nix develop .#buildenv-py3$i-FreeThreading --command echo buildenv-py3$i-FreeThreading
+	nix develop .#devenv-py3${i}t --command echo devenv-py3${i}t
+	nix develop .#buildenv-py3${i}t --command echo buildenv-py3${i}t
 done
