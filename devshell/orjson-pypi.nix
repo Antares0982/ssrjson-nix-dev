@@ -5,7 +5,7 @@
   pkgs,
   lib,
   fetchurl,
-  version ? "3.11.6",
+  version ? "3.11.7",
   ...
 }:
 let
@@ -32,6 +32,11 @@ let
           manyLinux = "manylinux_2_17_x86_64.manylinux2014_x86_64";
           hash = "sha256-bd35unBilJBsVu9RUKlYMXsJqjqKSN8cUszyLsGQfqw=";
         };
+        "3.11.7" = {
+          urlpart = "c2/8b/ecdad52d0b38d4b8f514be603e69ccd5eacf4e7241f972e37e79792212ec";
+          manyLinux = "manylinux_2_17_x86_64.manylinux2014_x86_64";
+          hash = "sha256-pW3zI5KU6llkrfB0xUvMTwzNIWNgSaLPPKnPA7XQPPE=";
+        };
       };
     };
     "aarch64-linux" = {
@@ -52,6 +57,11 @@ let
           urlpart = "39/5e/cbb9d830ed4e47f4375ad8eef8e4fff1bf1328437732c3809054fc4e80be";
           manyLinux = "manylinux_2_17_aarch64.manylinux2014_aarch64";
           hash = "sha256-s3b7BfIKluwRfUeYfdOzkmXGNXJb2kBmG0xbc7d7X94=";
+        };
+        "3.11.7" = {
+          urlpart = "9d/7e/c4de2babef2c0817fd1f048fd176aa48c37bec8aef53d2fa932983032cce";
+          manyLinux = "manylinux_2_17_aarch64.manylinux2014_aarch64";
+          hash = "sha256-PEvGxqxSzaomdVJUTHPkhv7L1xC3rAm8Ak1aeFVaIvY=";
         };
       };
     };
