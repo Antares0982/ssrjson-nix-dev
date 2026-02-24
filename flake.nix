@@ -42,6 +42,7 @@
           versionUtils = pkgs.callPackage ./devshell/version_utils.nix { inherit pkgs-legacy; };
           _drvs = pkgs.callPackage ./devshell/_drvs.nix { inherit pkgs-legacy; };
           pythonVerConfig = versionUtils.pythonVerConfig;
+          pyVerToPkgs = versionUtils.pyVerToPkgs;
           curVer = pythonVerConfig.curVer;
           leastVer = pythonVerConfig.minSupportVer;
           getPyEnv = ver: builtins.elemAt _drvs.pyenvs (ver - leastVer);
@@ -97,7 +98,7 @@
             name = "buildenv-py3" + (toString ver);
             value = pkgs.mkShell {
               buildInputs = [
-                ((builtins.getAttr ("python3" + (toString ver)) pkgs).withPackages (
+                ((builtins.getAttr ("python3" + (toString ver)) (pyVerToPkgs ver)).withPackages (
                   pypkgs: with pypkgs; [
                     # this is needed unless `nix build .#ssrjson-nixpkgs.legacyPackages.x86_64-linux.python314Packages.pip` can run correctly
                     (if ver < 14 then pip else pkgs.callPackage ./devshell/py314-pip.nix { inherit pypkgs; })
