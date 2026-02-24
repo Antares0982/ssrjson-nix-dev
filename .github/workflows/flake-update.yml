@@ -81,6 +81,7 @@ jobs:
       run: |
         git config --global user.email "${{ steps.import-gpg.outputs.email }}"
         git config --global user.name "${{ steps.import-gpg.outputs.name }}"
+        git config --global pull.rebase false
     - name: Setup cachix
       uses: cachix/cachix-action@master
       with:
@@ -93,18 +94,9 @@ jobs:
     - name: Test Nix Develop
       run: |
         ./devshell-test.sh
-        if [ "$DO_UPDATE" = "true" ]; then
-          if [ -z $(git status --porcelain) ]; then
-            echo "clean, skip..."
-          else
-            git add --all
-            git commit --message "Flake Update"
-          fi
-        fi
     - name: Git push
       if: env.DO_UPDATE == 'true'
       run: |
-        git config --global pull.rebase false
         git pull
         git push
     - name: Nix flake update (new branch)
