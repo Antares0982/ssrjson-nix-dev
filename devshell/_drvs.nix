@@ -15,6 +15,9 @@ let
   minSupportNoGILVer = pythonVerConfig.minSupportNoGILVer;
   curVer = pythonVerConfig.curVer;
   supportedVers = builtins.genList (x: minSupportVer + x) (maxSupportVer - minSupportVer + 1);
+  supportedVersNoGIL = builtins.genList (x: minSupportNoGILVer + x) (
+    maxSupportVer - minSupportNoGILVer + 1
+  );
   using_pythons_map =
     { py, curPkgs, ... }:
     let
@@ -54,15 +57,15 @@ let
   using_pythons_no_gil = (
     builtins.map using_pythons_map (
       builtins.map (supportedVer: rec {
-        curPkgs = pkgs;
+        curPkgs = pyVerToPkgs supportedVer;
         py = (
           builtins.getAttr (
             "python3"
             + (builtins.toString supportedVer)
             + lib.optionalString (supportedVer >= minSupportNoGILVer) "FreeThreading"
-          ) pkgs
+          ) curPkgs
         );
-      }) supportedVers
+      }) supportedVersNoGIL
     )
   );
   # import required python packages
@@ -86,10 +89,6 @@ let
   ) using_pythons_no_gil;
   sde = pkgs.callPackage ./sde.nix { };
   llvmDbg = pkgs.enableDebugging pkgs.llvmPackages.libllvm;
-  verToEnvDef = ver: {
-    name = "internal_py3" + (builtins.toString ver) + "env";
-    value = builtins.elemAt pyenvs (ver - minSupportVer);
-  };
 in
 {
   inherit pyenvs; # list
@@ -97,13 +96,13 @@ in
   inherit debuggable_py; # list
   inherit debuggable_py_no_gil; # list
   inherit using_pythons; # list
+  inherit using_pythons_no_gil; # list
   inherit llvmDbg;
   inherit (pkgs)
     cmake
     gdb
     ;
 }
-// (builtins.listToAttrs (map verToEnvDef versionUtils.versions))
 // lib.optionalAttrs (system == "x86_64-linux") {
   inherit sde;
 }

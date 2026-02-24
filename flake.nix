@@ -45,13 +45,16 @@
           pyVerToPkgs = versionUtils.pyVerToPkgs;
           curVer = pythonVerConfig.curVer;
           leastVer = pythonVerConfig.minSupportVer;
+          leastNoGILVer = pythonVerConfig.minSupportNoGILVer;
           getPyEnv = ver: builtins.elemAt _drvs.pyenvs (ver - leastVer);
+          getPyEnvNoGIL = ver: builtins.elemAt _drvs.pyenvs_no_gil (ver - leastNoGILVer);
           getUsingPython = ver: builtins.elemAt _drvs.using_pythons (ver - leastVer);
+          getUsingPythonNoGIL = ver: builtins.elemAt _drvs.using_pythons_no_gil (ver - leastNoGILVer);
           getShellAndHook =
             { ver, useNoGIL }:
             let
-              pyenv = getPyEnv ver;
-              using_python = getUsingPython ver;
+              pyenv = if useNoGIL then getPyEnvNoGIL ver else getPyEnv ver;
+              using_python = if useNoGIL then getUsingPythonNoGIL ver else getUsingPython ver;
               shell = pkgs.callPackage ./devshell/shell.nix {
                 inherit pkgs-legacy;
                 inherit pyenv using_python;
@@ -100,8 +103,16 @@
               buildInputs = [
                 ((builtins.getAttr ("python3" + (toString ver)) (pyVerToPkgs ver)).withPackages (
                   pypkgs: with pypkgs; [
-                    # this is needed unless `nix build .#ssrjson-nixpkgs.legacyPackages.x86_64-linux.python314Packages.pip` can run correctly
-                    (if ver < 14 then pip else pkgs.callPackage ./devshell/py314-pip.nix { inherit pypkgs; })
+                    # this is needed unless
+                    # `nix build .#ssrjson-nixpkgs.legacyPackages.x86_64-linux.python315Packages.pip`
+                    # or `nix build .#ssrjson-nixpkgs.legacyPackages.x86_64-linux.python310Packages.pip`
+                    # can run correctly
+                    (
+                      if (ver < 15 && ver > 10) then
+                        pip
+                      else
+                        pkgs.callPackage ./devshell/pip-clean.nix { inherit pypkgs; }
+                    )
                     build
                     pytest
                     pytest-random-order
@@ -119,10 +130,10 @@
             name = "buildenv-py3" + (toString ver) + "t";
             value = pkgs.mkShell {
               buildInputs = [
-                ((builtins.getAttr ("python3" + (toString ver) + "FreeThreading") pkgs).withPackages (
+                ((builtins.getAttr ("python3" + (toString ver) + "FreeThreading") (pyVerToPkgs ver)).withPackages (
                   pypkgs: with pypkgs; [
-                    # this is needed unless `nix build .#ssrjson-nixpkgs.legacyPackages.x86_64-linux.python314Packages.pip` can run correctly
-                    (if ver < 14 then pip else pkgs.callPackage ./devshell/py314-pip.nix { inherit pypkgs; })
+                    # this is needed unless python314FreeThreading's pip can build correctly
+                    (pkgs.callPackage ./devshell/pip-clean.nix { inherit pypkgs; })
                     build
                     pytest
                     pytest-random-order

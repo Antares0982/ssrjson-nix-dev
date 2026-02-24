@@ -14,13 +14,15 @@
 }:
 let
   versionUtils = pkgs.callPackage ./version_utils.nix { inherit pkgs-legacy; };
-  versions = versionUtils.versions;
+  versions = if useNoGIL then versionUtils.versionsSupportNoGIL else versionUtils.versions;
   debugSourceDir = "debug_source";
   minSupportVer = versionUtils.pythonVerConfig.minSupportVer;
+  minSupportNoGILVer = versionUtils.pythonVerConfig.minSupportNoGILVer;
+  usingIndexOffsetStart = if useNoGIL then minSupportNoGILVer else minSupportVer;
   debug_source_cmd =
     ver:
     let
-      debuggable_python = builtins.elemAt debuggable_py (ver - minSupportVer);
+      debuggable_python = builtins.elemAt debuggable_py (ver - usingIndexOffsetStart);
       debugSourceTargetDir = "${debugSourceDir}/Python-${debuggable_python.version}";
     in
     ''

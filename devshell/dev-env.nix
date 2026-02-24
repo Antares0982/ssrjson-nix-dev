@@ -26,14 +26,17 @@ let
   versionUtils = callPackage ./version_utils.nix { inherit pkgs-legacy; };
   versions = versionUtils.versions;
   minSupportVer = versionUtils.pythonVerConfig.minSupportVer;
+  minSupportNoGILVer = versionUtils.pythonVerConfig.minSupportNoGILVer;
   curVer = pkgs.lib.strings.toInt pyenv.sourceVersion.minor;
   usePyEnvs = if useNoGIL then pyenvs_no_gil else pyenvs;
-  pyenv_nodebug = builtins.elemAt usePyEnvs (curVer - minSupportVer);
+  usingIndexOffsetStart = if useNoGIL then minSupportNoGILVer else minSupportVer;
+  usingIndex = curVer - usingIndexOffsetStart;
+  pyenv_nodebug = builtins.elemAt usePyEnvs usingIndex;
   link_python_cmd =
     ver:
     let
-      python_env = builtins.elemAt usePyEnvs (ver - minSupportVer);
-      debuggable_python = builtins.elemAt debuggable_py (ver - minSupportVer);
+      python_env = builtins.elemAt usePyEnvs (ver - usingIndexOffsetStart);
+      debuggable_python = builtins.elemAt debuggable_py (ver - usingIndexOffsetStart);
       dev_python = callPackage ./_dev_python.nix {
         pyenv_with_site_packages = python_env;
         inherit debuggable_python ver useNoGIL;
