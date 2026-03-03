@@ -125,6 +125,11 @@ jobs:
         fi
         short_rev=${rev:0:12}
         branch="flake-update/nixpkgs-${short_rev}"
+        # check if remote branch already exists
+        if git ls-remote --heads origin "$branch" | grep -q .; then
+          echo "Branch $branch already exists on remote -> skip creating branch"
+          exit 0
+        fi
         git checkout -b "$branch"
         echo "$branch" > .github/flake-update-branch.txt
     - name: Test Nix Develop (new branch)
