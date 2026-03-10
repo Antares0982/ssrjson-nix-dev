@@ -26,5 +26,6 @@ with pypkgs;
     ssrjson-benchmark
     orjson
     objgraph
+    pydantic
   ]
 )
