@@ -48,6 +48,7 @@ pypkgs.buildPythonPackage rec {
       reportlab
       svglib
       ujson
+      pydantic
     ]
     ++ (lib.optionals (system == "x86_64-linux") [ pypkgs.psutil ]);
 

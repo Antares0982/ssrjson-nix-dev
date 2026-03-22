@@ -23,9 +23,6 @@ with pypkgs;
 ++ (
   with pypkgs; # needed by developers
   lib.optionals (minorVer == pythonVerConfig.curVer && !useNoGIL) [
-    ssrjson-benchmark
-    orjson
-    objgraph
-    pydantic
+    # No package for now
   ]
 )

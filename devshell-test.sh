@@ -12,3 +12,4 @@ for ((i = max_ver; i >= min_nogil_ver; i--)); do
 	nix develop .#devenv-py3${i}t --command echo devenv-py3${i}t
 	nix develop .#buildenv-py3${i}t --command echo buildenv-py3${i}t
 done
+nix develop .#benchmarkenv --command echo benchmarkenv

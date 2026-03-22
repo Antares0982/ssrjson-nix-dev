@@ -151,6 +151,26 @@
             name = "devenv-py3" + (toString ver);
             value = mkMyShell ver;
           };
+          benchmarkPy =
+            let
+              curPkgs = pyVerToPkgs curVer;
+              pyAttr = "python3" + (toString curVer);
+              basePy = builtins.getAttr pyAttr curPkgs;
+              pyWithOverrides = basePy.override {
+                self = pyWithOverrides;
+                packageOverrides = curPkgs.callPackage ./devshell/py_overrides.nix {
+                  verInt = curVer;
+                  inherit curVer;
+                  curPkgs = curPkgs;
+                  inherit pkgs-legacy;
+                };
+              };
+            in
+            pyWithOverrides.withPackages (
+              pypkgs: with pypkgs; [
+                ssrjson-benchmark
+              ]
+            );
           verToNoGILDevEnvDef = ver: {
             name = "devenv-py3" + (toString ver) + "t";
             value = mkMyShellNoGIL ver;
@@ -158,6 +178,9 @@
         in
         rec {
           default = mkMyShell curVer;
+          benchmarkenv = pkgs.mkShell {
+            packages = [ benchmarkPy ];
+          };
         }
         // (builtins.listToAttrs (map verToBuildEnvDef versionUtils.versions))
         // (builtins.listToAttrs (map verToDevEnvDef versionUtils.versions))
