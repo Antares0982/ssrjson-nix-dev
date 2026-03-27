@@ -15,6 +15,7 @@ let
 in
 with pypkgs;
 [
+  numpy
   pytest
   pytest-random-order
   pytest-xdist
