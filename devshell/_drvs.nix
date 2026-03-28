@@ -100,7 +100,6 @@ in
   inherit llvmDbg;
   inherit (pkgs)
     cmake
-    gdb
     ;
 }
 // lib.optionalAttrs (system == "x86_64-linux") {
@@ -109,6 +108,7 @@ in
 // lib.optionalAttrs (system != "aarch64-darwin") {
   inherit (pkgs)
     bloaty # binary size profiler
+    gdb
     pax-utils # lddtree
     triton-llvm # needed by coverage
     valgrind # memory profiler

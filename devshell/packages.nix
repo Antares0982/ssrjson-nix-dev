@@ -14,10 +14,8 @@ let
   drvs = (pkgs.callPackage ./_drvs.nix { inherit pkgs-legacy; });
 in
 [ pyenv ]
-# ++ drvs.pyenvs
 ++ (with drvs; [
   cmake
-  gdb
 ])
 ++ lib.optionals (system == "x86_64-linux") (
   with drvs;
@@ -29,6 +27,7 @@ in
   with drvs;
   [
     bloaty
+    gdb
     pax-utils
     triton-llvm
     valgrind
