@@ -42,15 +42,20 @@ pypkgs.buildPythonPackage rec {
   dependencies =
     with pypkgs;
     [
-      matplotlib
       msgspec
       orjson
-      reportlab
-      svglib
       ujson
       pydantic
     ]
-    ++ (lib.optionals (system == "x86_64-linux") [ pypkgs.psutil ]);
+    ++ (lib.optionals (system == "x86_64-linux") (
+      with pypkgs;
+      [
+        matplotlib
+        psutil
+        reportlab
+        svglib
+      ]
+    ));
 
   configurePhase = ":";
 
