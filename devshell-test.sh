@@ -1,4 +1,4 @@
-#/usr/bin/env bash
+#!/usr/bin/env bash
 set -e
 json_content=$(cat ./devshell/pyver.json)
 min_ver=$(echo "$json_content" | jq '.minSupportVer')

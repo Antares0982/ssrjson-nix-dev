@@ -15,12 +15,17 @@ let
 in
 with pypkgs;
 [
-  numpy
   pytest
   pytest-random-order
   pytest-xdist
 ]
-++ (lib.optionals (system == "x86_64-linux") [ pypkgs.psutil ])
+++ (lib.optionals (system == "x86_64-linux") (
+  with pypkgs;
+  [
+    numpy
+    psutil
+  ]
+))
 ++ (
   with pypkgs; # needed by developers
   lib.optionals (minorVer == pythonVerConfig.curVer && !useNoGIL) [

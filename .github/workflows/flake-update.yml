@@ -19,32 +19,43 @@ on:
     - cron: '0 11 * * *'
 
 jobs:
-  check:
+  # ── Step 1: prepare flags and optionally create a flake-update commit ──
+  prepare:
     runs-on: ubuntu-latest
+    outputs:
+      do_update: ${{ steps.flags.outputs.do_update }}
+      do_push_new_branch: ${{ steps.flags.outputs.do_push_new_branch }}
+      branch_name: ${{ steps.update-branch.outputs.branch_name }}
+      final_branch_name: ${{ steps.update-branch.outputs.final_branch_name }}
+      update_sha: ${{ steps.update-branch.outputs.update_sha }}
     steps:
-    - name: Set flag
+    - name: Set flags
+      id: flags
       run: |
-        echo "${{ github.event_name }}"
+        echo "event: ${{ github.event_name }}"
         if [ "${{ github.event_name }}" == "schedule" ]; then
-          echo "DO_UPDATE=false" >> $GITHUB_ENV
-          echo "DO_PUSH_NEW_BRANCH=true" >> $GITHUB_ENV
+          echo "do_update=false"          >> "$GITHUB_OUTPUT"
+          echo "do_push_new_branch=true"  >> "$GITHUB_OUTPUT"
         elif [ "${{ github.event_name }}" == "push" ]; then
-          echo "DO_UPDATE=false" >> $GITHUB_ENV
-          echo "DO_PUSH_NEW_BRANCH=false" >> $GITHUB_ENV
+          echo "do_update=false"          >> "$GITHUB_OUTPUT"
+          echo "do_push_new_branch=false" >> "$GITHUB_OUTPUT"
         else
-          echo "DO_UPDATE=${{ github.event.inputs.do-update }}" >> $GITHUB_ENV
-          echo "DO_PUSH_NEW_BRANCH=${{ github.event.inputs.new-branch }}" >> $GITHUB_ENV
+          echo "do_update=${{ github.event.inputs.do-update }}"     >> "$GITHUB_OUTPUT"
+          echo "do_push_new_branch=${{ github.event.inputs.new-branch }}" >> "$GITHUB_OUTPUT"
         fi
+
     - name: Checkout
       uses: actions/checkout@v5
       with:
         token: '${{ secrets.ACTION_GITHUB_TOKEN }}'
+
     - name: Install nix
       uses: cachix/install-nix-action@master
       with:
         github_access_token: '${{ secrets.ACTION_GITHUB_TOKEN }}'
+
     - name: Set nix daemon tmp path
-      if: env.DO_UPDATE == 'true' || env.DO_PUSH_NEW_BRANCH == 'true'
+      if: steps.flags.outputs.do_update == 'true' || steps.flags.outputs.do_push_new_branch == 'true'
       run: |
         sudo mkdir --parents /nix/tmp
         sudo chmod 777 /nix/tmp
@@ -57,8 +68,9 @@ jobs:
         sudo mv override.conf /etc/systemd/system/nix-daemon.service.d/override.conf
         sudo systemctl daemon-reload
         sudo systemctl restart nix-daemon
+
     - name: Import GPG key
-      if: env.DO_UPDATE == 'true' || env.DO_PUSH_NEW_BRANCH == 'true'
+      if: steps.flags.outputs.do_update == 'true' || steps.flags.outputs.do_push_new_branch == 'true'
       id: import-gpg
       uses: crazy-max/ghaction-import-gpg@v7
       with:
@@ -66,31 +78,26 @@ jobs:
         passphrase: ${{ secrets.PASSPHRASE }}
         git_user_signingkey: true
         git_commit_gpgsign: true
+
     - name: Configure git credentials
-      if: env.DO_UPDATE == 'true' || env.DO_PUSH_NEW_BRANCH == 'true'
+      if: steps.flags.outputs.do_update == 'true' || steps.flags.outputs.do_push_new_branch == 'true'
       run: |
         git config --global user.email "${{ steps.import-gpg.outputs.email }}"
         git config --global user.name "${{ steps.import-gpg.outputs.name }}"
         git config --global pull.rebase false
-    - name: Setup cachix
-      uses: cachix/cachix-action@master
-      with:
-        name: antares0982
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - name: Nix flake update
-      if: env.DO_UPDATE == 'true'
+
+    # ── direct update: commit flake.lock and push immediately ──
+    - name: Nix flake update (direct)
+      if: steps.flags.outputs.do_update == 'true'
       run: |
         nix --option commit-lockfile-summary "flake.lock: Update [skip ci]" flake update --commit-lock-file
-    - name: Test Nix Develop
-      run: |
-        ./devshell-test.sh
-    - name: Git push
-      if: env.DO_UPDATE == 'true'
-      run: |
         git pull
         git push
+
+    # ── new-branch path: commit flake.lock, push as pending branch for tests ──
     - name: Nix flake update (new branch)
-      if: env.DO_PUSH_NEW_BRANCH == 'true'
+      id: update-branch
+      if: steps.flags.outputs.do_push_new_branch == 'true'
       run: |
         set -euo pipefail
         before_sha=$(git rev-parse HEAD)
@@ -98,10 +105,13 @@ jobs:
         after_sha=$(git rev-parse HEAD)
         if [ "$before_sha" = "$after_sha" ]; then
           echo "No flake.lock update -> skip creating branch"
+          echo "branch_name="       >> "$GITHUB_OUTPUT"
+          echo "final_branch_name=" >> "$GITHUB_OUTPUT"
+          echo "update_sha="        >> "$GITHUB_OUTPUT"
           exit 0
         fi
 
-        # try to extract nixpkgs revision from flake.lock (robust against common formats)
+        # extract nixpkgs revision for branch name
         rev=$(jq -r '
           ( .nodes["nixpkgs"]?.locked.rev
           // .nodes["nixpkgs"]?.locked.revision
@@ -110,40 +120,130 @@ jobs:
           // .locks["nixpkgs"]?.locked.revision
           )' flake.lock 2>/dev/null | head -n1 || true)
         if [ -z "$rev" ] || [ "$rev" = "null" ]; then
-          # fallback to timestamped branch if revision not found
           rev=$(date -u +"%Y%m%dT%H%M%SZ")
         fi
         short_rev=${rev:0:12}
-        branch="flake-update/nixpkgs-${short_rev}"
-        # check if remote branch already exists
-        if git ls-remote --heads origin "$branch" | grep -q .; then
-          echo "Branch $branch already exists on remote -> skip creating branch"
+        final_branch="flake-update/nixpkgs-${short_rev}"
+        pending_branch="pending-flake-update/nixpkgs-${short_rev}"
+
+        # skip if the final (verified) branch already exists
+        if git ls-remote --heads origin "$final_branch" | grep -q .; then
+          echo "Branch $final_branch already exists on remote -> skip"
+          echo "branch_name="       >> "$GITHUB_OUTPUT"
+          echo "final_branch_name=" >> "$GITHUB_OUTPUT"
+          echo "update_sha="        >> "$GITHUB_OUTPUT"
           exit 0
         fi
-        git checkout -b "$branch"
-        echo "$branch" > .github/flake-update-branch.txt
-    - name: Test Nix Develop (new branch)
-      if: env.DO_PUSH_NEW_BRANCH == 'true'
+
+        git checkout -b "$pending_branch"
+        # push as a pending branch — the name signals "do not merge"
+        git push --set-upstream origin "$pending_branch"
+        echo "branch_name=$pending_branch"     >> "$GITHUB_OUTPUT"
+        echo "final_branch_name=$final_branch" >> "$GITHUB_OUTPUT"
+        echo "update_sha=$after_sha"           >> "$GITHUB_OUTPUT"
+        echo "Pushed pending branch $pending_branch for testing"
+
+  # ── Step 2: test on all three platforms (run in parallel) ──
+
+  test-x86_64-linux:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+      with:
+        ref: ${{ needs.prepare.outputs.branch_name || github.ref }}
+        token: '${{ secrets.ACTION_GITHUB_TOKEN }}'
+    - name: Install nix
+      uses: cachix/install-nix-action@master
+      with:
+        github_access_token: '${{ secrets.ACTION_GITHUB_TOKEN }}'
+    - name: Setup cachix
+      uses: cachix/cachix-action@master
+      with:
+        name: antares0982
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+    - name: Test Nix Develop
       run: |
-        set -euo pipefail
-        # if no branch was created, skip
-        if [ ! -f .github/flake-update-branch.txt ]; then
-          echo "No update branch created -> skip tests"
-          exit 0
-        fi
-        branch=$(cat .github/flake-update-branch.txt)
-        echo "Running tests on branch: $branch"
-        # allow tests to fail without failing the job; capture exit code
-        set +e
         ./devshell-test.sh
-        test_exit_code=$?
-        set -e
 
-        if [ "$test_exit_code" -ne 0 ]; then
-          echo "Tests failed on branch $branch — not pushing."
-          exit 0
+  test-aarch64-linux:
+    needs: prepare
+    runs-on: [self-hosted, Linux, ARM64]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ needs.prepare.outputs.branch_name || github.ref }}
+        token: '${{ secrets.ACTION_GITHUB_TOKEN }}'
+    - name: Setup cachix
+      uses: cachix/cachix-action@master
+      with:
+        name: antares0982
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+    - name: Test Nix Develop
+      run: |
+        ./devshell-test.sh
+
+  test-aarch64-darwin:
+    needs: prepare
+    runs-on: macos-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+      with:
+        ref: ${{ needs.prepare.outputs.branch_name || github.ref }}
+        token: '${{ secrets.ACTION_GITHUB_TOKEN }}'
+    - name: Install nix
+      uses: cachix/install-nix-action@master
+      with:
+        github_access_token: '${{ secrets.ACTION_GITHUB_TOKEN }}'
+    - name: Setup cachix
+      uses: cachix/cachix-action@master
+      with:
+        name: antares0982
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+    - name: Test Nix Develop
+      run: |
+        ./devshell-test.sh
+
+  # ── Step 3: rename pending branch to final on success, or delete on failure ──
+
+  finalize-branch:
+    needs: [prepare, test-x86_64-linux, test-aarch64-linux, test-aarch64-darwin]
+    runs-on: ubuntu-latest
+    # Run even when test jobs fail so we can clean up the pending branch
+    if: |
+      always() &&
+      needs.prepare.outputs.do_push_new_branch == 'true' &&
+      needs.prepare.outputs.branch_name != ''
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+      with:
+        ref: ${{ needs.prepare.outputs.branch_name }}
+        token: '${{ secrets.ACTION_GITHUB_TOKEN }}'
+    - name: Evaluate test results and finalize
+      env:
+        PENDING_BRANCH: ${{ needs.prepare.outputs.branch_name }}
+        FINAL_BRANCH: ${{ needs.prepare.outputs.final_branch_name }}
+        X86_RESULT: ${{ needs.test-x86_64-linux.result }}
+        ARM_RESULT: ${{ needs.test-aarch64-linux.result }}
+        MAC_RESULT: ${{ needs.test-aarch64-darwin.result }}
+      run: |
+        echo "Test results:"
+        echo "  x86_64-linux:   $X86_RESULT"
+        echo "  aarch64-linux:  $ARM_RESULT"
+        echo "  aarch64-darwin: $MAC_RESULT"
+        echo "  Pending branch: $PENDING_BRANCH"
+        echo "  Final branch:   $FINAL_BRANCH"
+
+        if [ "$X86_RESULT" = "success" ] && [ "$ARM_RESULT" = "success" ] && [ "$MAC_RESULT" = "success" ]; then
+          echo "All platforms passed — renaming $PENDING_BRANCH -> $FINAL_BRANCH"
+          # push current HEAD to the final branch name, then delete the pending one
+          git push origin "HEAD:refs/heads/$FINAL_BRANCH"
+          git push origin --delete "$PENDING_BRANCH" || true
+        else
+          echo "One or more platforms failed — deleting pending branch $PENDING_BRANCH"
+          git push origin --delete "$PENDING_BRANCH" || true
         fi
-
-        # push new branch to remote (remote branch doesn't exist yet)
-        git push --set-upstream origin "$branch"
-        echo "Pushed branch $branch"

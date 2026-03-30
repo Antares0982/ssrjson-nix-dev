@@ -82,10 +82,18 @@ let
   pyenvs = builtins.map pyenvs_map using_pythons;
   pyenvs_no_gil = builtins.map pyenvs_map_no_gil using_pythons_no_gil;
   debuggable_py = builtins.map (
-    py: (pyVerToPkgs (lib.strings.toInt py.sourceVersion.minor)).enableDebugging py
+    py:
+    if system == "x86_64-linux" then
+      (pyVerToPkgs (lib.strings.toInt py.sourceVersion.minor)).enableDebugging py
+    else
+      py
   ) using_pythons;
   debuggable_py_no_gil = builtins.map (
-    py: pkgs.enableDebugging (py.override { stdenv = pkgs.clangStdenv; })
+    py:
+    if system == "x86_64-linux" then
+      pkgs.enableDebugging (py.override { stdenv = pkgs.clangStdenv; })
+    else
+      py
   ) using_pythons_no_gil;
   sde = pkgs.callPackage ./sde.nix { };
   llvmDbg = pkgs.enableDebugging pkgs.llvmPackages.libllvm;
