@@ -114,6 +114,8 @@ stdenvNoCC.mkDerivation {
     ln -s "${cmake}/bin/cmake" "$out/bin/cmake"
     ln -s "${clang-tools}/bin/clang-format" "$out/bin/clang-format"
     ln -s "${cmake-format}/bin/cmake-format" "$out/bin/cmake-format"
+    ln -s "${llvmPackages.libllvm}/bin/llvm-profdata" "$out/bin/llvm-profdata"
+    ln -s "${llvmPackages.libllvm}/bin/llvm-cov" "$out/bin/llvm-cov"
     ln -s "$(readlink -f "$out/bin/python3.${verNameSuffix}")" "$out/bin/python"
     ln -s "$(readlink -f "$out/bin/python3.${verNameSuffix}")" "$out/bin/python3"
     # lib

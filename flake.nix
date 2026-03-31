@@ -46,6 +46,7 @@
           curVer = pythonVerConfig.curVer;
           leastVer = pythonVerConfig.minSupportVer;
           leastNoGILVer = pythonVerConfig.minSupportNoGILVer;
+          latestWheelBuildableVer = pythonVerConfig.latestWheelBuildableVer;
           getPyEnv = ver: builtins.elemAt _drvs.pyenvs (ver - leastVer);
           getPyEnvNoGIL = ver: builtins.elemAt _drvs.pyenvs_no_gil (ver - leastNoGILVer);
           getUsingPython = ver: builtins.elemAt _drvs.using_pythons (ver - leastVer);
@@ -102,7 +103,9 @@
             value = pkgs.mkShell {
               buildInputs = [
                 ((builtins.getAttr ("python3" + (toString ver)) (pyVerToPkgs ver)).withPackages (
-                  pypkgs: with pypkgs; [
+                  pypkgs:
+                  with pypkgs;
+                  [
                     # this is needed unless
                     # `nix build .#ssrjson-nixpkgs.legacyPackages.x86_64-linux.python315Packages.pip`
                     # or `nix build .#ssrjson-nixpkgs.legacyPackages.x86_64-linux.python310Packages.pip`
@@ -117,6 +120,11 @@
                     pytest
                     pytest-random-order
                   ]
+                  ++
+                    lib.optionals (ver <= latestWheelBuildableVer && pkgs.stdenv.hostPlatform.system == "x86_64-linux")
+                      [
+                        pypkgs.numpy
+                      ]
                 ))
               ]
               ++ (with pkgs; [

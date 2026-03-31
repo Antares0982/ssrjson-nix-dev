@@ -29,7 +29,6 @@ in
     bloaty
     gdb
     pax-utils
-    triton-llvm
     valgrind
   ]
 )

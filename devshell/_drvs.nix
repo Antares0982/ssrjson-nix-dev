@@ -118,7 +118,6 @@ in
     bloaty # binary size profiler
     gdb
     pax-utils # lddtree
-    triton-llvm # needed by coverage
     valgrind # memory profiler
     ;
 }
