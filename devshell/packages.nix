@@ -17,6 +17,10 @@ in
 ++ (with drvs; [
   cmake
 ])
+++ (with pkgs; [
+  xxd
+  binutils
+])
 ++ lib.optionals (system == "x86_64-linux") (
   with drvs;
   [
