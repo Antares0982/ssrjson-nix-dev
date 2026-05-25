@@ -20,6 +20,7 @@ in
 ++ (with pkgs; [
   xxd
   binutils
+  file
 ])
 ++ lib.optionals (system == "x86_64-linux") (
   with drvs;
