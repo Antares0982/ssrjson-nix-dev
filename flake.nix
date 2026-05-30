@@ -35,6 +35,9 @@
     {
       ssrjson-nixpkgs = nixpkgs;
       ssrjson-nixpkgs-legacy = nixpkgs-legacy;
+      packages = {
+        x86_64-linux.sde = (import nixpkgs { system = "x86_64-linux"; }).callPackage ./devshell/sde.nix { };
+      };
       devShells = forAllSystems (
         pkgs:
         let
@@ -168,8 +171,7 @@
                 self = pyWithOverrides;
                 packageOverrides = curPkgs.callPackage ./devshell/py_overrides.nix {
                   verInt = curVer;
-                  inherit curVer;
-                  curPkgs = curPkgs;
+                  inherit curVer curPkgs;
                   inherit pkgs-legacy;
                 };
               };
