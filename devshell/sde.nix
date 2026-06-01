@@ -1,18 +1,14 @@
-{ stdenv, ... }:
+{ stdenv, autoPatchelfHook, ... }:
 stdenv.mkDerivation {
   name = "intel-sde";
+  nativeBuildInputs = [ autoPatchelfHook ];
+  buildInputs = [ stdenv.cc.cc.lib ];
   installPhase = ''
     runHook preInstall
     mkdir -p $out/bin
     mkdir -p $out/share
     cp -r $src/* $out/bin
     runHook postInstall
-  '';
-  postFixup = ''
-    patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out/bin/sde
-    patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out/bin/sde64
-    patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out/bin/xed
-    patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out/bin/xed64
   '';
   phases = [
     "unpackPhase"
