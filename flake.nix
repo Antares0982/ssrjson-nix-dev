@@ -44,12 +44,13 @@
           pkgs-legacy = import nixpkgs-legacy { inherit (pkgs.stdenv.hostPlatform) system; };
           versionUtils = pkgs.callPackage ./devshell/version_utils.nix { inherit pkgs-legacy; };
           _drvs = pkgs.callPackage ./devshell/_drvs.nix { inherit pkgs-legacy; };
-          pythonVerConfig = versionUtils.pythonVerConfig;
-          pyVerToPkgs = versionUtils.pyVerToPkgs;
-          curVer = pythonVerConfig.curVer;
-          leastVer = pythonVerConfig.minSupportVer;
+          inherit (versionUtils) pythonVerConfig pyVerToPkgs;
+          inherit (pythonVerConfig)
+            curVer
+            latestWheelBuildableVer
+            ;
           leastNoGILVer = pythonVerConfig.minSupportNoGILVer;
-          latestWheelBuildableVer = pythonVerConfig.latestWheelBuildableVer;
+          leastVer = pythonVerConfig.minSupportVer;
           getPyEnv = ver: builtins.elemAt _drvs.pyenvs (ver - leastVer);
           getPyEnvNoGIL = ver: builtins.elemAt _drvs.pyenvs_no_gil (ver - leastNoGILVer);
           getUsingPython = ver: builtins.elemAt _drvs.using_pythons (ver - leastVer);
@@ -86,8 +87,7 @@
                 ver = selectedVer;
                 useNoGIL = false;
               };
-              shell = shellAndHook.shell;
-              shellHook = shellAndHook.shellHook;
+              inherit (shellAndHook) shell shellHook;
             in
             shellAndHook.finalShell;
           mkMyShellNoGIL =
@@ -97,8 +97,7 @@
                 ver = selectedVer;
                 useNoGIL = true;
               };
-              shell = shellAndHook.shell;
-              shellHook = shellAndHook.shellHook;
+              inherit (shellAndHook) shell shellHook;
             in
             shellAndHook.finalShell;
           verToBuildEnvDef = ver: {
@@ -123,11 +122,9 @@
                     pytest
                     pytest-random-order
                   ]
-                  ++
-                    lib.optionals (ver <= latestWheelBuildableVer && pkgs.stdenv.hostPlatform.system == "x86_64-linux")
-                      [
-                        pypkgs.numpy
-                      ]
+                  ++ lib.optionals (ver <= latestWheelBuildableVer) [
+                    pypkgs.numpy
+                  ]
                 ))
               ]
               ++ (with pkgs; [
