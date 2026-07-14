@@ -4,6 +4,22 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixpkgs-legacy.url = "github:NixOS/nixpkgs/nixos-25.05";
+
+    pyproject-nix = {
+      url = "github:pyproject-nix/pyproject.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    uv2nix = {
+      url = "github:pyproject-nix/uv2nix";
+      inputs.pyproject-nix.follows = "pyproject-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    pyproject-build-systems = {
+      url = "github:pyproject-nix/build-system-pkgs";
+      inputs.pyproject-nix.follows = "pyproject-nix";
+      inputs.uv2nix.follows = "uv2nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -11,6 +27,9 @@
       self,
       nixpkgs,
       nixpkgs-legacy,
+      pyproject-nix,
+      uv2nix,
+      pyproject-build-systems,
       ...
     }:
     let
@@ -43,13 +62,16 @@
         let
           pkgs-legacy = import nixpkgs-legacy { inherit (pkgs.stdenv.hostPlatform) system; };
           versionUtils = pkgs.callPackage ./devshell/version_utils.nix { inherit pkgs-legacy; };
-          _drvs = pkgs.callPackage ./devshell/_drvs.nix { inherit pkgs-legacy; };
+          mkVenv =
+            (pkgs.callPackage ./devshell/uv_workspace.nix {
+              inherit uv2nix pyproject-nix pyproject-build-systems;
+            }).mkVenv;
+          _drvs = pkgs.callPackage ./devshell/_drvs.nix { inherit pkgs-legacy mkVenv; };
           pythonVerConfig = versionUtils.pythonVerConfig;
           pyVerToPkgs = versionUtils.pyVerToPkgs;
           curVer = pythonVerConfig.curVer;
           leastVer = pythonVerConfig.minSupportVer;
           leastNoGILVer = pythonVerConfig.minSupportNoGILVer;
-          latestWheelBuildableVer = pythonVerConfig.latestWheelBuildableVer;
           getPyEnv = ver: builtins.elemAt _drvs.pyenvs (ver - leastVer);
           getPyEnvNoGIL = ver: builtins.elemAt _drvs.pyenvs_no_gil (ver - leastNoGILVer);
           getUsingPython = ver: builtins.elemAt _drvs.using_pythons (ver - leastVer);
@@ -105,30 +127,10 @@
             name = "buildenv-py3" + (toString ver);
             value = pkgs.mkShell {
               buildInputs = [
-                ((builtins.getAttr ("python3" + (toString ver)) (pyVerToPkgs ver)).withPackages (
-                  pypkgs:
-                  with pypkgs;
-                  [
-                    # this is needed unless
-                    # `nix build .#ssrjson-nixpkgs.legacyPackages.x86_64-linux.python315Packages.pip`
-                    # or `nix build .#ssrjson-nixpkgs.legacyPackages.x86_64-linux.python310Packages.pip`
-                    # can run correctly
-                    (
-                      if (ver < 15 && ver > 10) then
-                        pip
-                      else
-                        pkgs.callPackage ./devshell/pip-clean.nix { inherit pypkgs; }
-                    )
-                    build
-                    pytest
-                    pytest-random-order
-                  ]
-                  ++
-                    lib.optionals (ver <= latestWheelBuildableVer && pkgs.stdenv.hostPlatform.system == "x86_64-linux")
-                      [
-                        pypkgs.numpy
-                      ]
-                ))
+                (mkVenv {
+                  python = builtins.getAttr ("python3" + (toString ver)) (pyVerToPkgs ver);
+                  group = "build";
+                })
               ]
               ++ (with pkgs; [
                 cmake
@@ -141,15 +143,10 @@
             name = "buildenv-py3" + (toString ver) + "t";
             value = pkgs.mkShell {
               buildInputs = [
-                ((builtins.getAttr ("python3" + (toString ver) + "FreeThreading") (pyVerToPkgs ver)).withPackages (
-                  pypkgs: with pypkgs; [
-                    # this is needed unless python314FreeThreading's pip can build correctly
-                    (pkgs.callPackage ./devshell/pip-clean.nix { inherit pypkgs; })
-                    build
-                    pytest
-                    pytest-random-order
-                  ]
-                ))
+                (mkVenv {
+                  python = builtins.getAttr ("python3" + (toString ver) + "FreeThreading") (pyVerToPkgs ver);
+                  group = "build";
+                })
               ]
               ++ (with pkgs; [
                 cmake
@@ -162,25 +159,10 @@
             name = "devenv-py3" + (toString ver);
             value = mkMyShell ver;
           };
-          benchmarkPy =
-            let
-              curPkgs = pyVerToPkgs curVer;
-              pyAttr = "python3" + (toString curVer);
-              basePy = builtins.getAttr pyAttr curPkgs;
-              pyWithOverrides = basePy.override {
-                self = pyWithOverrides;
-                packageOverrides = curPkgs.callPackage ./devshell/py_overrides.nix {
-                  verInt = curVer;
-                  inherit curVer curPkgs;
-                  inherit pkgs-legacy;
-                };
-              };
-            in
-            pyWithOverrides.withPackages (
-              pypkgs: with pypkgs; [
-                ssrjson-benchmark
-              ]
-            );
+          benchmarkPy = mkVenv {
+            python = builtins.getAttr ("python3" + (toString curVer)) (pyVerToPkgs curVer);
+            group = "benchmark";
+          };
           verToNoGILDevEnvDef = ver: {
             name = "devenv-py3" + (toString ver) + "t";
             value = mkMyShellNoGIL ver;

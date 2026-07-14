@@ -1,0 +1,39 @@
+[project]
+name = "ssrjson-devenv"
+version = "0"
+requires-python = ">=3.10"
+# Virtual workspace root: it ships no code of its own. All tooling is declared
+# in the dependency-groups below and selected per devShell via uv2nix.
+dependencies = []
+
+[dependency-groups]
+# dev pyenv (see devshell/_drvs.nix) and buildenv (see flake.nix). Each comes in
+# two variants: with numpy and without. numpy is excluded for Python versions
+# above `latestWheelBuildableVer` (devshell/pyver.json) because there is no
+# buildable numpy for them yet -- devshell/uv_workspace.nix picks the `-nonumpy`
+# variant by integer minor version. (A PEP 508 marker cannot express this: uv
+# normalizes any `< 3.15.0aN` bound to `< 3.15`, which still matches nixpkgs'
+# 3.15 *prerelease* interpreter and pulls in the unbuildable numpy.)
+dev-base = ["pytest", "pytest-random-order", "pytest-xdist", "psutil"]
+dev = [{ include-group = "dev-base" }, "numpy"]
+dev-nonumpy = [{ include-group = "dev-base" }]
+
+build-base = ["pip", "build", "pytest", "pytest-random-order"]
+build = [{ include-group = "build-base" }, "numpy"]
+build-nonumpy = [{ include-group = "build-base" }]
+
+# benchmarkenv (only built for the current default version; see flake.nix).
+benchmark = [
+    "msgspec",
+    "orjson",
+    "ujson",
+    "pydantic",
+    "matplotlib",
+    "psutil",
+    "reportlab",
+    "svglib",
+    "ssrjson-benchmark",
+]
+
+[tool.uv]
+package = false

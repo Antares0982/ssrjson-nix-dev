@@ -2,6 +2,12 @@
   pkgs,
   pkgs-legacy,
   fetchFromGitHub,
+  # uv2nix venv builder, threaded in from flake.nix. Only forced when `pyenvs` /
+  # `pyenvs_no_gil` are evaluated (i.e. via the top-level `_drvs` in flake.nix);
+  # the `packages.nix` / `shell.nix` call sites only read tool derivations and
+  # never force the pyenvs, so a `null` default keeps those callPackage calls
+  # working without threading the uv inputs through them.
+  mkVenv ? null,
   ...
 }:
 let
@@ -68,19 +74,26 @@ let
       }) supportedVersNoGIL
     )
   );
-  # import required python packages
-  required_python_packages = pkgs.callPackage ./py_requirements.nix {
-    inherit pkgs-legacy;
-    useNoGIL = false;
-  };
-  required_python_packages_no_gil = pkgs.callPackage ./py_requirements.nix {
-    inherit pkgs-legacy;
-    useNoGIL = true;
-  };
-  pyenvs_map = py: (py.withPackages required_python_packages);
-  pyenvs_map_no_gil = py: (py.withPackages required_python_packages_no_gil);
-  pyenvs = builtins.map pyenvs_map using_pythons;
-  pyenvs_no_gil = builtins.map pyenvs_map_no_gil using_pythons_no_gil;
+  # Build the "original" python env from the uv2nix "dev" dependency-group
+  # instead of `withPackages` (which pulls from nixpkgs and breaks on updates).
+  # Re-attach the interpreter passthru attrs consumed downstream
+  # (dev-env.nix / shellhook.nix / _dev_python.nix) so the swap is transparent.
+  mkDevVenv =
+    interp:
+    (mkVenv {
+      python = interp;
+      group = "dev";
+    })
+    // {
+      inherit (interp)
+        executable
+        sitePackages
+        libPrefix
+        sourceVersion
+        ;
+    };
+  pyenvs = builtins.map mkDevVenv using_pythons;
+  pyenvs_no_gil = builtins.map mkDevVenv using_pythons_no_gil;
   debuggable_py = builtins.map (
     py:
     if system == "x86_64-linux" then
