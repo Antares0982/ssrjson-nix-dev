@@ -29,6 +29,12 @@ let
     sourcePreference = "wheel";
   };
 
+  # Same overlay resolved from sdists, used to pull individual packages that
+  # have no usable wheel for our interpreters (see psutil below).
+  sdistOverlay = workspace.mkPyprojectOverlay {
+    sourcePreference = "sdist";
+  };
+
   # Fixups for packages that may be built from sdist. ssrjson-benchmark ships
   # manylinux wheels for the versions we use (so this is normally a no-op), but
   # keep the cmake/setuptools build inputs in case a wheel is unavailable for a
@@ -39,6 +45,17 @@ let
         (old.nativeBuildInputs or [ ])
         ++ (final.resolveBuildSystem { setuptools = [ ]; })
         ++ [ pkgs.cmake ];
+    });
+
+    # psutil only publishes free-threaded wheels up to cp314t; for every other
+    # free-threaded interpreter (e.g. cp315t) it falls back to its cp36-abi3
+    # wheel, which uv refuses on a free-threaded build because the stable ABI
+    # requires the GIL. There is thus no usable wheel on free-threaded 3.15+,
+    # so build psutil from its sdist (a small C extension) instead. The sdist
+    # does not declare setuptools in build-system.requires, so add it here.
+    psutil = (sdistOverlay final prev).psutil.overrideAttrs (old: {
+      nativeBuildInputs =
+        (old.nativeBuildInputs or [ ]) ++ (final.resolveBuildSystem { setuptools = [ ]; });
     });
   };
 
