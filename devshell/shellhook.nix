@@ -53,12 +53,19 @@ let
       ;
     sitePackagesString = pyenv.sitePackages;
   };
+  nixpkgsPath = toString pkgs.path;
+  keep_root_cmd = ''
+    ${pkgs.nix}/bin/nix-store --add-root ${nix_pyenv_directory} --realise ${nixPyEnv} &>/dev/null
+  ''
+  + lib.optionalString (lib.hasPrefix builtins.storeDir nixpkgsPath) ''
+    ${pkgs.nix}/bin/nix-store --add-root ${nix_pyenv_directory}-nixpkgs --realise ${nixpkgsPath}
+  '';
 in
 ''
   if [ ! -f "flake.nix" ]; then
     echo "Not creating pyenv because not in the root directory"
   else
-    ${pkgs.nix}/bin/nix-store --add-root ${nix_pyenv_directory} --realise ${nixPyEnv} &>/dev/null
+    ${keep_root_cmd}
   fi
 
   export PATH=${nixPyEnv}/bin:$PATH

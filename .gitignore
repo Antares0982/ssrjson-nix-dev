@@ -1,5 +1,6 @@
 /debug_source
 /.nix-devenv
+/.nix-devenv-nixpkgs
 
 # Ignore build outputs from performing a nix-build or `nix build` command
 result
