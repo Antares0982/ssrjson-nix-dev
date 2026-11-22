@@ -18,9 +18,7 @@
 let
   workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ../.; };
 
-  # Python versions above this have no buildable numpy yet (from PyPI). Mirrors
-  # the original `ver <= latestWheelBuildableVer` gate. Gated in Nix by integer
-  # minor version rather than a PEP 508 marker; see pyproject.toml for why.
+  # Compare minor versions for prerelease interpreters.
   latestWheelBuildableVer = (lib.importJSON ./pyver.json).latestWheelBuildableVer;
 
   # Overlay of the workspace's packages, resolved from uv.lock. Prefer wheels

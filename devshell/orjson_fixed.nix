@@ -24,8 +24,6 @@ pypkgs.buildPythonPackage rec {
   version = if useNixpkgsUnstable then "3.11.3" else "3.10.13";
   pyproject = true;
 
-  disabled = pypkgs.pythonOlder "3.10";
-
   src = fetchFromGitHub {
     owner = "ijl";
     repo = "orjson";

@@ -19,8 +19,6 @@ pypkgs.buildPythonPackage rec {
   version = "0.0.11";
   pyproject = true;
 
-  disabled = pypkgs.pythonOlder "3.10";
-
   # src = pkgs.fetchFromGitHub {
   #   owner = "Nambers";
   #   repo = "ssrJSON-benchmark";

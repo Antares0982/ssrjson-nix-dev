@@ -207,7 +207,7 @@ done
         config.write_text(
             json.dumps(
                 {
-                    "minSupportVer": 10,
+                    "minSupportVer": 11,
                     "minSupportNoGILVer": 14,
                     "latestWheelBuildableVer": 15,
                 }
@@ -218,7 +218,7 @@ done
         calls = nix_log.read_text().splitlines()
         assert [line.split()[1].split("#")[1] for line in calls] == [
             f"ssrjson-wheel-py3{version}"
-            for version in ("15t", "14t", "15", "14", "13", "12", "11", "10")
+            for version in ("15t", "14t", "15", "14", "13", "12", "11")
         ]
         for line in calls:
             assert "--no-link" in line and "--no-write-lock-file" in line

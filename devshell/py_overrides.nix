@@ -34,11 +34,10 @@ in
       inherit pkgs-legacy;
       isDebug = orjsonDebug;
     };
-    orjsonPypi = callPackage ./orjson-pypi.nix { pypkgs = self; };
   in
   (makeNewPackages super noCheckPackage fakeCond)
   // {
-    orjson = if (verInt != curVer || orjsonDebug) then orjsonSimple else orjsonPypi;
+    orjson = if (verInt != curVer || orjsonDebug) then orjsonSimple else noCheckPackage "orjson";
     ssrjson-benchmark = callPackage ./ssrjson_benchmark.nix {
       pypkgs = self;
       inherit pkgs-legacy;
